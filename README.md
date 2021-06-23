@@ -2,6 +2,12 @@
 
 TO - Tanzu Observability
 
+## Pre-requisites
+
+1. Java 11
+1. IDE/Codee Editor
+1. Maven 3.x
+
 ## Just Run
 
 1. Clone this repo
@@ -29,7 +35,8 @@ cd springboot-tracing
 
     ```bash
     ..snip..
-
+    Connect to your Wavefront dashboard using this one-time use link:
+    https://wavefront.surf/us/XXXXXXXXX
     ..snip..
     ```
 
@@ -92,9 +99,89 @@ cd springboot-tracing
 
 1. Create a catalog service
 
-    a. Create project on [Spring Initializer][initializer] ([pre-filled][initializer-catalog])
-    b. Update application config
-    c. Update code
+    1. Create project on [Spring Initializer][initializer] ([pre-filled][initializer-catalog])
+    1. Download zip file - `catalog.zip`
+    1. Extract zip file    
+    1. Update application config - `catalog/src/main/resources/application.properties`
+
+        ```ini
+        spring.application.name=catalog
+        server.port=8083
+        wavefront.application.name=console-availability
+        management.metrics.export.wavefront.source=dev-workstation
+        ```
+
+    1. Update `catalog/src/main/java/com/example/catalog/CatalogApplication.java`
+
+        1. Add `@Slf4j` annotation to class
+
+            ```java
+            ...
+            import lombok.extern.slf4j.Slf4j;
+            ...
+
+            @Slf4j
+            @SpringBootApplication
+            public class CatalogApplication {
+            ...
+            ```
+
+        1. Add log message to `main` method
+
+            ```java
+            ...
+            public static void main(String[] args) {
+                log.info("Starting Catalog Service");
+            ...
+            ```
+
+        1. Add `AvailabilityController` class
+
+            ```java
+            ...
+            import java.util.Map;
+            import java.util.Set;
+            import org.springframework.util.Assert;
+            import org.springframework.util.StringUtils;
+            import org.springframework.web.bind.annotation.GetMapping;
+            import org.springframework.web.bind.annotation.PathVariable;
+            import org.springframework.web.bind.annotation.RestController;            
+            
+            ...
+            
+            @RestController
+            class AvailabilityController {
+
+                    private boolean validate(String console) {
+                            return StringUtils.hasText(console) &&
+                                    Set.of("ps5", "ps4", "switch", "xbox").contains(console);
+                    }
+
+                    @GetMapping("/availability/{console}")
+                    Map<String, Object> getAvailability(@PathVariable String console) {
+                            return Map.of("console", console,
+                                            "available", checkAvailability(console));
+                    }
+
+                    private boolean checkAvailability(String console) {
+                            Assert.state(validate(console), () -> "the console specified, " + console + ", is not valid.");
+                            if("ps5".equals(console)){
+                                throw new RuntimeException("Service exception");
+                            }else if( "xbox".equals(console)){
+                                return true;
+                            }else{
+                                return false;
+                            }
+                    }
+            }
+
+            ```
+
+        1. Run application
+
+            ```bash
+            ./mvnw -pl catalog -DskipTests  spring-boot:run
+            ```
 
 1. Create a store service
 
@@ -131,5 +218,5 @@ This is an adaptation from:
 [tanzu-wf-for-springboot]: https://tanzu.vmware.com/developer/guides/spring/spring-wavefront-gs/
 [wf-springboot]: https://docs.wavefront.com/wavefront_springboot.html
 [initializer]: https://start.spring.io
-[initializer-catalog]: https://start.spring.io
-[initializer-store]: https://start.spring.io
+[initializer-catalog]: https://start.spring.io/#!type=maven-project&language=java&platformVersion=2.5.1.RELEASE&packaging=jar&jvmVersion=11&groupId=com.example&artifactId=catalog&name=Catalog&description=Spring%20Boot%20Metrics%20and%20Tracing%20%2F%2F%20Catalog%20Service&packageName=com.example.catalog&dependencies=webflux,actuator,lombok,cloud-starter-sleuth,wavefront,devtools
+[initializer-store]: https://start.spring.io/#!type=maven-project&language=java&platformVersion=2.5.1.RELEASE&packaging=jar&jvmVersion=11&groupId=com.example&artifactId=store&name=store&description=Spring%20Boot%20Metrics%20and%20Tracing%20%2F%2F%20Store&packageName=com.example.store&dependencies=webflux,actuator,lombok,cloud-starter-sleuth,wavefront,devtools
