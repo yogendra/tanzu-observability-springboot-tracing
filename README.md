@@ -99,9 +99,8 @@ cd springboot-tracing
 
 1. Create a catalog service
 
-    1. Create project on [Spring Initializer][initializer] ([pre-filled][initializer-catalog])
-    1. Download zip file - `catalog.zip`
-    1. Extract zip file    
+    1. Create project on [Spring Initializer][initializer] ([pre-filled][initializer-catalog]) and download the zip (`catalog.zip`). Extract this archive in the project folder
+
     1. Update application config - `catalog/src/main/resources/application.properties`
 
         ```ini
@@ -113,25 +112,17 @@ cd springboot-tracing
 
     1. Update `catalog/src/main/java/com/example/catalog/CatalogApplication.java`
 
-        1. Add `@Slf4j` annotation to class
+        1. Add logging annotation to class
 
             ```java
             ...
-            import lombok.extern.slf4j.Slf4j;
-            ...
+            import lombok.extern.slf4j.Slf4j;            
 
             @Slf4j
             @SpringBootApplication
             public class CatalogApplication {
-            ...
-            ```
-
-        1. Add log message to `main` method
-
-            ```java
-            ...
-            public static void main(String[] args) {
-                log.info("Starting Catalog Service");
+                public static void main(String[] args) {
+                    log.info("Starting Catalog Service");
             ...
             ```
 
@@ -174,7 +165,6 @@ cd springboot-tracing
                             }
                     }
             }
-
             ```
 
         1. Run application
@@ -185,19 +175,124 @@ cd springboot-tracing
 
 1. Create a store service
 
-    a. Create project on [Spring Initializer][initializer] ([pre-filled][initializer-store])
-    b. Update application config
-    c. Update code
+    1. Create project on [Spring Initializer][initializer] ([pre-filled][initializer-store])
+    1. Update application config - `store/src/main/resources/application.properties`
+    1. Update `store/src/main/java/com/example/store/StoreApplication.java`
 
-1. Run project
+        1. Add logging to `StoreApplication` class
 
-    a. On the parent project directory (`springboot-tracing`), run `springboot:run` target
+            ```java
+            ...
+            import lombok.extern.slf4j.Slf4j;
+            ...
 
-      ```bash
-      ./mvnw springboot:run
-      ```
+            
+            @Slf4j
+            @SpringBootApplication
+            public class StoreApplication {
+                public static void main(String[] args) {
+                log.info("Starting Store Service");
+            ...
+            ```
 
-1. See Dashboard
+        1. Add `WebClient` bean creation logic
+
+            ```java
+            import org.springframework.context.annotation.Bean;
+            import org.springframework.web.reactive.function.client.WebClient;
+            ...
+            @Bean
+            WebClient webClient(WebClient.Builder builder) {
+                return builder.build();
+            }
+            ```
+
+        1. Add `Availability` and `AvailabilityClient` class
+
+            ```java
+            import reactor.core.publisher.Flux;
+            import reactor.core.publisher.Mono;
+            import lombok.Data;
+            import lombok.AllArgsConstructor;
+            import lombok.NoArgsConstructor;
+            import lombok.RequiredArgsConstructor;
+            import org.springframework.stereotype.Component;
+
+            ...
+            @Data
+            @AllArgsConstructor
+            @NoArgsConstructor
+            class Availability {
+                private boolean available;
+                private String console;
+            }
+            
+
+            @Component
+            @RequiredArgsConstructor
+            class AvailabilityClient {
+
+                private final WebClient webClient;
+                private static final String URI = "http://localhost:8083/availability/{console}";
+
+                Mono<Availability> checkAvailability(String console) {
+                    return this.webClient
+                            .get()
+                            .uri(URI, console)
+                            .retrieve()
+                            .bodyToMono(Availability.class)
+                            .onErrorReturn(new Availability(false, console));
+                }
+
+            }
+            ```
+
+        1. Add a post start handler to run console availability check. 
+
+            ```java
+            import java.time.Duration;
+            import org.springframework.boot.context.event.ApplicationReadyEvent;
+            import org.springframework.context.ApplicationListener;
+            import reactor.core.publisher.Flux;
+            ...
+            @Bean
+            ApplicationListener<ApplicationReadyEvent> ready(AvailabilityClient client) {
+                return applicationReadyEvent -> {
+                    for (var console : "ps5,xbox,ps4,switch".split(",")) {
+                        Flux.range(0, Integer.MAX_VALUE).delayElements(Duration.ofMillis(100)).subscribe(i ->
+                                client
+                                        .checkAvailability(console)
+                                        .subscribe(availability ->
+                                                log.info("console: {}, availability: {} ", console, availability.isAvailable())));
+                    }
+                };
+            }
+            ```
+
+    1. On a new terminal, run application
+
+        ```bash
+        ./mvnw -pl catalog -DskipTests  spring-boot:run
+        ```
+
+        **Output**
+
+        ```bash
+        ....
+        Your existing Wavefront account information has been restored from disk.
+
+        To share this account, make sure the following is added to your configuration:
+
+                management.metrics.export.wavefront.api-token=xxxxxxxx-xxxx-xxxxx-xxxx-xxxxxxxxxxxx
+                management.metrics.export.wavefront.uri=https://wavefront.surf
+
+        Connect to your Wavefront dashboard using this one-time use link:
+        https://wavefront.surf/us/XXXXXXXXXXX
+        ....
+        ```
+
+1. Open dashboard using the link from earlier step.
+
 
 ## Credits
 
