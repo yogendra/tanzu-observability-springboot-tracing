@@ -1,4 +1,4 @@
-# [DRAFT] Tanzu Observability - Springboot Tracing
+# Tanzu Observability - Springboot Tracing
 
 TO - Tanzu Observability
 
@@ -12,23 +12,16 @@ TO - Tanzu Observability
 
 1. Clone this repo
 
-```bash
-git clone git@github.com:yogendra/tanzu-observability-springboot-tracing.git springboot-tracing
-cd springboot-tracing
-```
-
-### V1 - Initial
-
-1. Checkout `initial`
-
     ```bash
-    git checkout initial
+    git clone git@github.com:yogendra/tanzu-observability-springboot-tracing.git springboot-tracing
+    cd springboot-tracing
     ```
 
-1. Run application
+
+1. Run catalog service
   
     ```bash
-    ./mvnw springboot:run
+    ./mvnw -pl catalog clean spring-boot:run
     ```
 
     **Output**
@@ -40,15 +33,15 @@ cd springboot-tracing
     ..snip..
     ```
 
-1. Checkout TO Dashboard
+    Get the dashboard link from output and open in browser.
 
-### V2 - Fixed Code
+1. Open another terminal and run Store Service
 
-1. Update code to fix an error
+    ```bash
+    ./mvnw -pl store clean spring-boot:run
+    ```
 
-1. Run application
-
-1. Check TO Dashboard
+1. On TO dashboard observe the application
 
 ## Starting from Scratch
 
